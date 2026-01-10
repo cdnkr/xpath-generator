@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset for shadow DOM to ensure clean styling */
+:host {
+  font-size: 16px !important; 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  isolation: isolate;
+}
+
+.xpath-generator-app {
+  font-size: 16px !important; 
+}
+
+/* Ensure backdrop works */
+.fixed.inset-0 {
+    background-color: transparent;
+}

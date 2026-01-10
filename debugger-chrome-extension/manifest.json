@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "XPath Generator",
+  "version": "1.0.0",
+  "description": "Optimized XPath generator for web elements.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
