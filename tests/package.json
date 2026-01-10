@@ -1,0 +1,17 @@
+{
+  "name": "xpath-generator-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "jsdom": "^24.0.0",
+    "typescript": "^5.4.3",
+    "vitest": "^2.1.8"
+  }
+}
+
+
