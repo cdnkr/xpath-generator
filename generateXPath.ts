@@ -19,8 +19,6 @@ const STABLE_ATTRIBUTES = [
     'id', 'name', 'role', 'placeholder'
 ];
 
-const TEXT_ANCHOR_TAGS = ['BUTTON', 'LABEL', 'DIV'];
-
 // Tags stable enough to use as unique tag selectors (semantic/structural elements)
 const UNIQUE_TAG_WHITELIST = new Set([
     'body', 'main', 'header', 'footer', 'nav', 'aside',  // Document structure
@@ -266,7 +264,7 @@ function getAnchorXPaths(element: Element): string[] {
     }
 
     // Text anchor
-    if (TEXT_ANCHOR_TAGS.includes(element.tagName) && hasStableText(element)) {
+    if (hasStableText(element)) {
         const text = element.textContent?.trim() || "";
         const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
         if (isUnique(xpath, doc)) {
@@ -337,7 +335,7 @@ function getSiblingAnchor(sibling: Element, doc: Document): string | null {
     }
 
     // Text anchor
-    if (TEXT_ANCHOR_TAGS.includes(sibling.tagName) && hasStableText(sibling)) {
+    if (hasStableText(sibling)) {
         const text = sibling.textContent?.trim() || "";
         const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
         if (isUnique(xpath, doc)) return xpath;
