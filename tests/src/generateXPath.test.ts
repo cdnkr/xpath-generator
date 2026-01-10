@@ -1,4 +1,4 @@
-import { generateXPath } from "../../index";
+import { generateXPath } from "../../generateXPath";
 import { documentFromHtml, readFixtureHtml, resolveGeneratedSelector } from "./testUtils";
 
 // Defensive polyfill for environments where jsdom doesn't expose CSS.escape.
