@@ -392,6 +392,9 @@ function getShadowSiblingIndex(element: Element, parent: ParentNode): number {
 function isStableId(id: string): boolean {
     if (!id) return false;
     if (/^([a-fA-F0-9-]{10,})$/.test(id)) return false;  // UUIDs/hex
+    // Common "generated" IDs with underscore-delimited tokens, e.g. `u_0_9_QM`, `_r_8_`
+    // Matches any substring like `_<token>_<token>_` where token is [A-Za-z0-9]+
+    if (/_[a-zA-Z0-9]+_[a-zA-Z0-9]+_/.test(id)) return false;
     if (/\d{5,}$/.test(id)) return false;                 // Large trailing numbers
     if (/^(ember|react-|vue-)\d*/.test(id)) return false; // Framework IDs
     if (/_\d{1,4}$/.test(id)) return false;               // Dynamic suffixes

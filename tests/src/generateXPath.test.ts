@@ -177,6 +177,28 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     expect(titleXPath).toContain("@data-testid='product-title'");
     expect(priceXPath).toContain("@data-testid='product-price'");
   });
+
+  it("6.5) Unstable IDs (underscore-delimited tokens like u_0_9_QM): data-testid wins over @id", () => {
+    const doc = documentFromHtml(`
+      <!doctype html>
+      <html>
+        <body>
+          <div>
+            <span id="u_0_9_QM" data-testid="product-title">Acme Widget</span>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const el = doc.querySelector("[data-testid='product-title']") as Element;
+    expect(el).not.toBeNull();
+    expect((el as HTMLElement).id).toBe("u_0_9_QM");
+
+    const xpath = generateXPath(el);
+    expect(xpath).toContain("@data-testid='product-title'");
+    expect(xpath).not.toContain("@id='u_0_9_QM'");
+    expectResolvesOn(doc, xpath, el);
+  });
 });
 
 describe("generateXPath (core) – Shadow DOM + SVG fixtures", () => {
