@@ -61,8 +61,8 @@ This structure lets the generator try aggressive ideas while only emitting selec
 
 In rough order:
 
-1. **Unique semantic tags** when they’re genuinely unique (e.g. a single `main`, `h1`, etc.).
-2. **Stable IDs** (only when they pass stability checks and are unique in the document).
+1. **Stable IDs** (only when they pass stability checks and are unique in the document).
+2. **Unique semantic tags** when they’re genuinely unique (e.g. a single `main`, `h1`, etc.).
 3. **Stable attributes** (e.g. `data-testid`, `data-cy`, `name`, `role`, etc.) when unique.
 4. **Label anchoring** for “label/value” layouts (common in forms and details panels).
 5. **Text anchoring** only under strict “stable text” heuristics.

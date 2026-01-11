@@ -2,8 +2,8 @@
  * XPath Generator for Chrome Extension Templating
  *
  * Strategy priority:
- * 1. Unique tag name (single h1, main, etc.)
- * 2. Stable ID
+ * 1. Stable ID
+ * 2. Unique tag name (single h1, main, etc.)
  * 3. Stable attributes (data-testid, name, etc.)
  * 4. Label anchoring
  * 5. Interactive text (buttons/links/divs)
