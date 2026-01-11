@@ -37,7 +37,7 @@ export class Overlay {
     this.overlayElement.style.cssText = `
       position: absolute;
       border: 2px solid #007AFF;
-      border-radius: 4px;
+      border-radius: 6px;
       display: none;
       transition: all 0.1s ease-out;
       box-sizing: border-box;
@@ -52,7 +52,7 @@ export class Overlay {
       background-color: #007AFF;
       color: white;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 12px;
       font-weight: 500;
