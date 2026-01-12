@@ -7,8 +7,11 @@
  *
  * - Shadow-compound selector (one or more shadow boundaries):
  *     `${documentXPathToHost}|/div[1]/button[2]|/span[1]`
+ *   or `${documentXPathToHost}|.//*[@id='foo']|.//span[normalize-space(.)='Save']`
  *
- * Each shadow path is walked within an open `shadowRoot` using deterministic tag+index segments.
+ * Shadow segments support both:
+ * - deterministic tag+index paths (starts with `/`)
+ * - relative XPath expressions evaluated with the `shadowRoot` as context (starts with `.` or anything else)
  */
 export function resolveElementFromStoredSelector(
   selector: string,
@@ -26,12 +29,12 @@ export function resolveElementFromStoredSelector(
 
   for (let i = 1; i < parts.length; i++) {
     const shadowPath = parts[i].trim();
-    if (!shadowPath.startsWith("/")) return null;
-
     const root = (current as HTMLElement).shadowRoot;
     if (!root) return null; // closed shadow root or not a host
 
-    const found = resolveInShadowRoot(root, shadowPath);
+    const found = shadowPath.startsWith("/")
+      ? resolveInShadowRoot(root, shadowPath)
+      : evaluateFirstXPathInContext(shadowPath, root);
     if (!found) return null;
     current = found;
   }
@@ -40,10 +43,17 @@ export function resolveElementFromStoredSelector(
 }
 
 function evaluateFirstXPath(xpath: string): Element | null {
+  return evaluateFirstXPathInContext(xpath, document);
+}
+
+function evaluateFirstXPathInContext(
+  xpath: string,
+  context: Node,
+): Element | null {
   try {
     const result = document.evaluate(
       xpath,
-      document,
+      context,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
       null,
