@@ -267,8 +267,8 @@ describe("generateXPath (core) – Shadow DOM + SVG fixtures", () => {
     expect(target).not.toBeNull();
 
     const selector = generateXPath(target);
-    // Should include at least one shadow segment: `...|/something[...]`
-    expect(selector).toContain("|/");
+    // Should include at least one shadow segment (either deterministic `/tag[index]...` or scoped XPath like `.//...`)
+    expect(selector).toMatch(/\|[/.]/);
 
     const resolved = resolveGeneratedSelector(doc, selector);
     expect(resolved).toBe(target);

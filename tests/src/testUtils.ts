@@ -21,10 +21,18 @@ export function documentFromHtml(html: string): Document {
 }
 
 export function evalXPathSingle(doc: Document, xpath: string): Element | null {
+  return evalXPathSingleInContext(doc, doc, xpath);
+}
+
+export function evalXPathSingleInContext(
+  doc: Document,
+  context: Node,
+  xpath: string,
+): Element | null {
   try {
     const result = doc.evaluate(
       xpath,
-      doc,
+      context,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
       null,
@@ -44,8 +52,11 @@ export function evalXPathSingle(doc: Document, xpath: string): Element | null {
  * Resolves the extended selector format returned by `generateXPath()` for Shadow DOM:
  *   `${documentXPath}|${shadowPath}|${shadowPath}...`
  *
- * Each shadowPath is an absolute deterministic path within a shadow root like:
- *   `/div[1]/button[2]/span[1]`
+ * Each shadowPath can be either:
+ * - absolute deterministic path within a shadow root like:
+ *     `/div[1]/button[2]/span[1]`
+ * - relative XPath evaluated within a shadow root like:
+ *     `.//*[@id='foo']` or `.//span[normalize-space(.)='Save']`
  */
 export function resolveGeneratedSelector(
   doc: Document,
@@ -60,9 +71,11 @@ export function resolveGeneratedSelector(
 
   for (let i = 1; i < parts.length; i++) {
     const shadowPath = parts[i];
-    const root = (current as Element).shadowRoot;
+    const root: ShadowRoot | null = (current as Element).shadowRoot;
     if (!root) return null;
-    const next = resolveShadowAbsolutePath(root, shadowPath);
+    const next: Element | null = shadowPath.trim().startsWith("/")
+      ? resolveShadowAbsolutePath(root, shadowPath)
+      : evalXPathSingleInContext(doc, root, shadowPath);
     if (!next) return null;
     current = next;
   }
