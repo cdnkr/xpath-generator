@@ -55,6 +55,9 @@ const MAX_STABLE_TEXT_LENGTH = 40;
 const MIN_STABLE_TEXT_LENGTH = 2;
 const MAX_LABEL_LENGTH = 30;
 
+type SelectorRole = "target" | "anchor";
+type XPathScope = Document | ShadowRoot;
+
 // Main function
 export function generateXPath(element: Element): string {
   if (!element || element.nodeType !== Node.ELEMENT_NODE) {
@@ -68,26 +71,40 @@ export function generateXPath(element: Element): string {
   while (true) {
     const root = current.getRootNode();
     if (!(root instanceof ShadowRoot)) break;
-    shadowPaths.unshift(getShadowAbsolutePath(root, current));
+    shadowPaths.unshift(generateXPathInScope(current, root));
     current = root.host;
   }
 
-  const base = generateXPathInDocument(current);
+  const base = generateXPathInScope(current, current.ownerDocument);
   return shadowPaths.length === 0 ? base : `${base}|${shadowPaths.join("|")}`;
 }
 
-function generateXPathInDocument(element: Element): string {
+function generateXPathInScope(element: Element, scope: XPathScope): string {
+  return (
+    getBestUniqueXPath(element, "target", scope) ??
+    (scope instanceof ShadowRoot
+      ? getShadowAbsolutePath(scope, element)
+      : getAbsolutePath(element))
+  );
+}
+
+// Candidate Collection
+interface Candidate {
+  xpath: string;
+  score: number;
+}
+
+function getBestUniqueXPath(
+  element: Element,
+  role: SelectorRole,
+  scope: XPathScope,
+): string | null {
   const doc = element.ownerDocument;
-  const candidates = collectAllCandidates(element);
+  const prefix = getXPathPrefix(scope);
+  const candidates = collectCandidates(element, role, scope, prefix);
+  const validCandidates = dedupeAndValidate(candidates, doc, scope);
 
-  // Dedupe and validate uniqueness
-  const validCandidates = dedupeAndValidate(candidates, doc);
-
-  console.log("deduped", validCandidates);
-
-  if (validCandidates.length === 0) {
-    return getAbsolutePath(element);
-  }
+  if (validCandidates.length === 0) return null;
 
   // Sort: higher score first, then fewer steps, then shorter string
   validCandidates.sort((a, b) => {
@@ -100,51 +117,68 @@ function generateXPathInDocument(element: Element): string {
   return validCandidates[0].xpath;
 }
 
-// Candidate Collection
-interface Candidate {
-  xpath: string;
-  score: number;
-}
-
-function collectAllCandidates(element: Element): Candidate[] {
-  const doc = element.ownerDocument;
+function collectCandidates(
+  element: Element,
+  role: SelectorRole,
+  scope: XPathScope,
+  prefix: string,
+): Candidate[] {
   const candidates: Candidate[] = [];
 
   // Tag name uniqueness
-  const tagSelector = getUniqueTagNameSelector(element);
+  const tagSelector = getUniqueTagNameSelector(element, scope, prefix);
   if (tagSelector) {
     candidates.push({ xpath: tagSelector, score: 90 });
   }
 
   // Stable ID
-  if (isStableId(element.id) && isUniqueId(element.id, doc)) {
-    candidates.push({ xpath: `//*[@id='${element.id}']`, score: 100 });
+  if (isStableId(element.id) && isUniqueId(element.id, scope)) {
+    candidates.push({ xpath: `${prefix}*[@id='${element.id}']`, score: 100 });
   }
 
   // Direct selectors (attributes, labels, text)
   candidates.push(
-    ...getDirectSelectors(element).map((xpath) => ({ xpath, score: 80 })),
+    ...getDirectSelectors(element, scope, prefix).map((xpath) => ({
+      xpath,
+      score: 80,
+    })),
   );
 
-  // Ancestor-based paths
-  candidates.push(
-    ...getAncestorPaths(element).map((xpath) => ({ xpath, score: 70 })),
-  );
+  if (role === "target") {
+    // Ancestor-based paths
+    candidates.push(
+      ...getAncestorPaths(element, scope, prefix).map((xpath) => ({
+        xpath,
+        score: 70,
+      })),
+    );
 
-  // Sibling-based paths
-  candidates.push(
-    ...getSiblingPaths(element).map((xpath) => ({ xpath, score: 60 })),
-  );
+    // Sibling-based paths
+    candidates.push(
+      ...getSiblingPaths(element, scope, prefix).map((xpath) => ({
+        xpath,
+        score: 60,
+      })),
+    );
+  }
 
   // Class-based selectors
   candidates.push(
-    ...getClassSelectors(element).map((xpath) => ({ xpath, score: 40 })),
+    ...getClassSelectors(element, scope, prefix).map((xpath) => ({
+      xpath,
+      score: 40,
+    })),
   );
 
-  // Absolute fallback
-  const abs = getAbsolutePath(element);
-  if (isUnique(abs, doc)) {
-    candidates.push({ xpath: abs, score: 0 });
+  if (role === "target") {
+    // Absolute fallback
+    const abs =
+      scope instanceof ShadowRoot
+        ? getShadowAbsolutePath(scope, element)
+        : getAbsolutePath(element);
+    if (isUnique(abs, element.ownerDocument, scope)) {
+      candidates.push({ xpath: abs, score: 0 });
+    }
   }
 
   return candidates;
@@ -153,13 +187,14 @@ function collectAllCandidates(element: Element): Candidate[] {
 function dedupeAndValidate(
   candidates: Candidate[],
   doc: Document,
+  scope: XPathScope,
 ): Candidate[] {
   const result: Candidate[] = [];
   const seen = new Set<string>();
 
   for (const c of candidates) {
     if (!c.xpath || seen.has(c.xpath)) continue;
-    if (!isUnique(c.xpath, doc)) continue;
+    if (!isUnique(c.xpath, doc, scope)) continue;
     seen.add(c.xpath);
     result.push(c);
   }
@@ -168,19 +203,24 @@ function dedupeAndValidate(
 }
 
 // Strategy: Direct Selectors
-function getDirectSelectors(element: Element): string[] {
-  const doc = element.ownerDocument;
+function getDirectSelectors(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string[] {
   const nodeTest = getNodeTest(element);
   const selectors: string[] = [];
 
   // Stable attribute
-  const stableAttr = getUniqueStableAttribute(element);
+  const stableAttr = getUniqueStableAttribute(element, scope, prefix);
   if (stableAttr) {
-    selectors.push(`//${nodeTest}[@${stableAttr.name}='${stableAttr.value}']`);
+    selectors.push(
+      `${prefix}${nodeTest}[@${stableAttr.name}='${stableAttr.value}']`,
+    );
   }
 
   // Label anchoring
-  const labelPath = getLabelAnchoredPath(element);
+  const labelPath = getLabelAnchoredPath(element, scope, prefix);
   if (labelPath) {
     selectors.push(labelPath);
   }
@@ -188,8 +228,8 @@ function getDirectSelectors(element: Element): string[] {
   // Text anchoring
   if (hasStableText(element)) {
     const text = element.textContent?.trim() || "";
-    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-    if (isUnique(xpath, doc)) {
+    const xpath = `${prefix}${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
+    if (isUnique(xpath, element.ownerDocument, scope)) {
       selectors.push(xpath);
     }
   }
@@ -197,15 +237,27 @@ function getDirectSelectors(element: Element): string[] {
   return selectors;
 }
 
-function getUniqueTagNameSelector(element: Element): string | null {
+function getUniqueTagNameSelector(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string | null {
   const tag = element.tagName.toLowerCase();
-  if (!UNIQUE_TAG_WHITELIST.has(tag)) return null;
+  // Allow custom elements (dash-separated) as unique tag selectors too.
+  // This helps Shadow DOM hosts like <hgf-footer> become `//hgf-footer` when unique,
+  // instead of falling back to ancestor-anchored `//body/hgf-footer[1]`.
+  const isCustomElement = tag.includes("-");
+  if (!UNIQUE_TAG_WHITELIST.has(tag) && !isCustomElement) return null;
 
-  const xpath = `//${getNodeTest(element)}`;
-  return isUnique(xpath, element.ownerDocument) ? xpath : null;
+  const xpath = `${prefix}${getNodeTest(element)}`;
+  return isUnique(xpath, element.ownerDocument, scope) ? xpath : null;
 }
 
-function getLabelAnchoredPath(element: Element): string | null {
+function getLabelAnchoredPath(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string | null {
   const prev = element.previousElementSibling;
   if (!prev || !hasStableText(prev)) return null;
 
@@ -213,15 +265,18 @@ function getLabelAnchoredPath(element: Element): string | null {
   if (text.length > MAX_LABEL_LENGTH || text.length < MIN_STABLE_TEXT_LENGTH)
     return null;
 
-  const labelXpath = `//${prev.tagName.toLowerCase()}[normalize-space(text())='${escapeXPathString(text)}']`;
-  if (!isUnique(labelXpath, element.ownerDocument)) return null;
+  const labelXpath = `${prefix}${prev.tagName.toLowerCase()}[normalize-space(text())='${escapeXPathString(text)}']`;
+  if (!isUnique(labelXpath, element.ownerDocument, scope)) return null;
 
   return `${labelXpath}/following-sibling::${getNodeTest(element)}[1]`;
 }
 
 // Strategy: Class-Based Selectors
-function getClassSelectors(element: Element): string[] {
-  const doc = element.ownerDocument;
+function getClassSelectors(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string[] {
   const nodeTest = getNodeTest(element);
   const validClasses = Array.from(element.classList).filter(isStableClass);
   const selectors: string[] = [];
@@ -229,15 +284,15 @@ function getClassSelectors(element: Element): string[] {
   if (validClasses.length === 0) return selectors;
 
   // All classes combined
-  const allClassesXpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
-  if (isUnique(allClassesXpath, doc)) {
+  const allClassesXpath = `${prefix}${nodeTest}[${buildClassPredicate(validClasses)}]`;
+  if (isUnique(allClassesXpath, element.ownerDocument, scope)) {
     selectors.push(allClassesXpath);
   }
 
   // Single classes
   for (const cls of validClasses) {
-    const xpath = `//${nodeTest}[${buildClassPredicate([cls])}]`;
-    if (isUnique(xpath, doc)) {
+    const xpath = `${prefix}${nodeTest}[${buildClassPredicate([cls])}]`;
+    if (isUnique(xpath, element.ownerDocument, scope)) {
       selectors.push(xpath);
     }
   }
@@ -250,7 +305,11 @@ function buildClassPredicate(classes: string[]): string {
 }
 
 // Strategy: Ancestor-Based Paths
-function getAncestorPaths(element: Element): string[] {
+function getAncestorPaths(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string[] {
   const selectors: string[] = [];
   const pathSegments: string[] = [];
   let current: Element | null = element;
@@ -265,10 +324,10 @@ function getAncestorPaths(element: Element): string[] {
     );
     const relativePath = pathSegments.join("/");
 
-    // Try all anchor strategies on parent
-    selectors.push(
-      ...getAnchorXPaths(parent).map((anchor) => `${anchor}/${relativePath}`),
-    );
+    const anchor = getBestUniqueXPath(parent, "anchor", scope);
+    if (anchor) {
+      selectors.push(`${anchor}/${relativePath}`);
+    }
 
     if (parent.tagName === "BODY") break;
     current = parent;
@@ -277,52 +336,12 @@ function getAncestorPaths(element: Element): string[] {
   return selectors;
 }
 
-function getAnchorXPaths(element: Element): string[] {
-  const doc = element.ownerDocument;
-  const nodeTest = getNodeTest(element);
-  const anchors: string[] = [];
-
-  // Unique tag name
-  const tagXpath = `//${nodeTest}`;
-  if (isUnique(tagXpath, doc)) {
-    anchors.push(tagXpath);
-  }
-
-  // Stable ID
-  if (isStableId(element.id) && isUniqueId(element.id, doc)) {
-    anchors.push(`//*[@id='${element.id}']`);
-  }
-
-  // Stable attribute
-  const attr = getUniqueStableAttribute(element);
-  if (attr) {
-    anchors.push(`//${nodeTest}[@${attr.name}='${attr.value}']`);
-  }
-
-  // Text anchor
-  if (hasStableText(element)) {
-    const text = element.textContent?.trim() || "";
-    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-    if (isUnique(xpath, doc)) {
-      anchors.push(xpath);
-    }
-  }
-
-  // Stable classes
-  const validClasses = Array.from(element.classList).filter(isStableClass);
-  if (validClasses.length > 0) {
-    const xpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
-    if (isUnique(xpath, doc)) {
-      anchors.push(xpath);
-    }
-  }
-
-  return anchors;
-}
-
 // Strategy: Sibling-Based Paths
-function getSiblingPaths(element: Element): string[] {
-  const doc = element.ownerDocument;
+function getSiblingPaths(
+  element: Element,
+  scope: XPathScope,
+  prefix: string,
+): string[] {
   const nodeTest = getNodeTest(element);
   const tagLower = element.tagName.toLowerCase();
   const parent = element.parentElement;
@@ -335,7 +354,7 @@ function getSiblingPaths(element: Element): string[] {
 
   // Preceding siblings
   for (let i = elementIndex - 1; i >= 0; i--) {
-    const anchor = getSiblingAnchor(siblings[i], doc);
+    const anchor = getBestUniqueXPath(siblings[i], "anchor", scope);
     if (!anchor) continue;
     const count = countSameTagBetween(siblings, i, elementIndex, tagLower);
     selectors.push(`${anchor}/following-sibling::${nodeTest}[${count}]`);
@@ -343,41 +362,13 @@ function getSiblingPaths(element: Element): string[] {
 
   // Following siblings
   for (let i = elementIndex + 1; i < siblings.length; i++) {
-    const anchor = getSiblingAnchor(siblings[i], doc);
+    const anchor = getBestUniqueXPath(siblings[i], "anchor", scope);
     if (!anchor) continue;
     const count = countSameTagBetween(siblings, elementIndex, i, tagLower);
     selectors.push(`${anchor}/preceding-sibling::${nodeTest}[${count}]`);
   }
 
   return selectors;
-}
-
-function getSiblingAnchor(sibling: Element, doc: Document): string | null {
-  const nodeTest = getNodeTest(sibling);
-
-  // Unique tag
-  const tagXpath = `//${nodeTest}`;
-  if (isUnique(tagXpath, doc)) return tagXpath;
-
-  // Stable ID
-  if (isStableId(sibling.id) && isUniqueId(sibling.id, doc)) {
-    return `//*[@id='${sibling.id}']`;
-  }
-
-  // Stable attribute
-  const attr = getUniqueStableAttribute(sibling);
-  if (attr) {
-    return `//${nodeTest}[@${attr.name}='${attr.value}']`;
-  }
-
-  // Text anchor
-  if (hasStableText(sibling)) {
-    const text = sibling.textContent?.trim() || "";
-    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-    if (isUnique(xpath, doc)) return xpath;
-  }
-
-  return null;
 }
 
 function countSameTagBetween(
@@ -443,6 +434,7 @@ function isStableId(id: string): boolean {
   if (/\d{5,}$/.test(id)) return false; // Large trailing numbers
   if (/^(ember|react-|vue-)\d*/.test(id)) return false; // Framework IDs
   if (/_\d{1,4}$/.test(id)) return false; // Dynamic suffixes
+
   return true;
 }
 
@@ -473,13 +465,15 @@ function hasStableText(element: Element): boolean {
 
 function getUniqueStableAttribute(
   element: Element,
+  scope: XPathScope,
+  prefix: string,
 ): { name: string; value: string } | null {
   for (const attr of STABLE_ATTRIBUTES) {
     const val = element.getAttribute(attr);
     if (!val || !isStableId(val)) continue;
 
-    const xpath = `//${getNodeTest(element)}[@${attr}='${val}']`;
-    if (isUnique(xpath, element.ownerDocument)) {
+    const xpath = `${prefix}${getNodeTest(element)}[@${attr}='${val}']`;
+    if (isUnique(xpath, element.ownerDocument, scope)) {
       return { name: attr, value: val };
     }
   }
@@ -487,11 +481,11 @@ function getUniqueStableAttribute(
 }
 
 // Uniqueness Checks
-function isUnique(xpath: string, doc: Document): boolean {
+function isUnique(xpath: string, doc: Document, scope: Node = doc): boolean {
   try {
     const result = doc.evaluate(
       xpath,
-      doc,
+      scope,
       null,
       XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
       null,
@@ -502,8 +496,12 @@ function isUnique(xpath: string, doc: Document): boolean {
   }
 }
 
-function isUniqueId(id: string, doc: Document): boolean {
-  return doc.querySelectorAll(`[id='${CSS.escape(id)}']`).length === 1;
+function isUniqueId(id: string, scope: ParentNode): boolean {
+  return scope.querySelectorAll(`[id='${CSS.escape(id)}']`).length === 1;
+}
+
+function getXPathPrefix(scope: XPathScope): string {
+  return scope instanceof ShadowRoot ? ".//" : "//";
 }
 
 // DOM Utilities
