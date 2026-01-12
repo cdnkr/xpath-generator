@@ -6,6 +6,9 @@ import { resolveElementFromStoredSelector } from "../utils/selectorResolver";
 interface HistoryPopoverProps {
   isOpen: boolean;
   onClose: () => void;
+  menuPosition: { x: number; y: number } | null;
+  menuSize: { width: number; height: number } | null;
+  onPositionChange: (direction: "top" | "bottom") => void;
 }
 
 interface EnrichedHistoryItem extends HistoryItem {
@@ -13,8 +16,70 @@ interface EnrichedHistoryItem extends HistoryItem {
   element: HTMLElement | null;
 }
 
-const HistoryPopover: React.FC<HistoryPopoverProps> = ({ isOpen, onClose }) => {
+const HistoryPopover: React.FC<HistoryPopoverProps> = ({ 
+  isOpen, 
+  onClose,
+  menuPosition,
+  menuSize,
+  onPositionChange
+}) => {
   const [items, setItems] = useState<EnrichedHistoryItem[]>([]);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
+  const popoverRef = React.useRef<HTMLDivElement>(null);
+  
+  // Calculate position when menu moves or opens
+  useEffect(() => {
+    if (!isOpen || !menuPosition || !menuSize) return;
+
+    const POPOVER_SIZE = 384; // w-96 = 24rem = 384px (also max-h-96)
+    const GAP = 24; // 6em = 24px gap for connector
+
+    // Calculate available space
+    const space = {
+      top: menuPosition.y,
+      bottom: window.innerHeight - (menuPosition.y + menuSize.height)
+    };
+
+    // Find direction with most space
+    let direction: "top" | "bottom" = "top";
+    
+    // Prefer bottom if there's enough space (at least 200px?), otherwise default to top if more space there
+    // Or just pick the one with MORE space
+    if (space.bottom > space.top) {
+      direction = "bottom";
+    } else {
+      direction = "top";
+    }
+
+    // Set position styles based on direction
+    const style: React.CSSProperties = {
+      position: 'fixed',
+      zIndex: 2147483647,
+    };
+
+    switch (direction) {
+      case "top":
+        style.bottom = window.innerHeight - menuPosition.y + GAP;
+        style.left = menuPosition.x + (menuSize.width / 2) - (POPOVER_SIZE / 2);
+        break;
+      case "bottom":
+        style.top = menuPosition.y + menuSize.height + GAP;
+        style.left = menuPosition.x + (menuSize.width / 2) - (POPOVER_SIZE / 2);
+        break;
+    }
+
+    // Adjust horizontal alignment to prevent overflow
+    const leftVal = style.left as number;
+    if (leftVal < 24) style.left = 24;
+    if (leftVal + POPOVER_SIZE > window.innerWidth - 24) {
+      style.left = window.innerWidth - POPOVER_SIZE - 24;
+    }
+
+    setPopoverStyle(style);
+    onPositionChange(direction);
+
+  }, [isOpen, menuPosition, menuSize]);
+
   const [activeItem, setActiveItem] = useState<EnrichedHistoryItem | null>(
     null,
   );
@@ -115,7 +180,11 @@ const HistoryPopover: React.FC<HistoryPopoverProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-[6.5em] left-6 z-[2147483647] rounded-2xl bg-neutral-300/80 p-1 shadow-lg shadow-gray-800/5 ring-1 ring-gray-800/[.075] backdrop-blur-xl">
+    <div 
+      ref={popoverRef}
+      style={popoverStyle}
+      className="rounded-2xl bg-neutral-300/80 p-1 shadow-lg shadow-gray-800/5 ring-1 ring-gray-800/[.075] backdrop-blur-xl"
+    >
       <div className="pointer-events-auto flex max-h-96 w-96 max-w-96 flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 shadow-lg shadow-gray-800/5 ring-1 ring-gray-800/[.075] backdrop-blur-xl">
         <div className="flex items-center justify-between bg-black/5 p-3">
           <h3 className="font-medium text-neutral-700">

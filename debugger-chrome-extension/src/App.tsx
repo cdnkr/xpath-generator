@@ -7,6 +7,9 @@ import { overlay } from "./utils/overlay";
 function App() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [popoverDirection, setPopoverDirection] = useState<"top" | "bottom">("top");
+  const [menuPosition, setMenuPosition] = useState<{x: number, y: number} | null>(null);
+  const [menuSize, setMenuSize] = useState<{width: number, height: number} | null>(null);
 
   // Handle selection mode changes
   useEffect(() => {
@@ -53,12 +56,20 @@ function App() {
       <HistoryPopover
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
+        menuPosition={menuPosition}
+        menuSize={menuSize}
+        onPositionChange={setPopoverDirection}
       />
       <Menu
         onSelectorClick={handleSelectorClick}
         onHistoryClick={handleHistoryClick}
         isSelectionActive={isSelectionMode}
         isHistoryOpen={isHistoryOpen}
+        popoverDirection={popoverDirection}
+        onPositionChange={(pos, size) => {
+          setMenuPosition(pos);
+          setMenuSize(size);
+        }}
       />
     </div>
   );
