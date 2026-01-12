@@ -22,9 +22,17 @@ export function documentFromHtml(html: string): Document {
 
 export function evalXPathSingle(doc: Document, xpath: string): Element | null {
   try {
-    const result = doc.evaluate(xpath, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+    const result = doc.evaluate(
+      xpath,
+      doc,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null,
+    );
     const node = result.singleNodeValue;
-    return node && node.nodeType === Node.ELEMENT_NODE ? (node as Element) : null;
+    return node && node.nodeType === Node.ELEMENT_NODE
+      ? (node as Element)
+      : null;
   } catch {
     // jsdom's XPath implementation has known gaps around namespace functions like local-name().
     // For our generator output, we only need a small fallback subset to validate SVG behavior.
@@ -39,7 +47,10 @@ export function evalXPathSingle(doc: Document, xpath: string): Element | null {
  * Each shadowPath is an absolute deterministic path within a shadow root like:
  *   `/div[1]/button[2]/span[1]`
  */
-export function resolveGeneratedSelector(doc: Document, selector: string): Element | null {
+export function resolveGeneratedSelector(
+  doc: Document,
+  selector: string,
+): Element | null {
   const parts = selector.split("|").filter(Boolean);
   if (parts.length === 0) return null;
 
@@ -59,10 +70,13 @@ export function resolveGeneratedSelector(doc: Document, selector: string): Eleme
   return current;
 }
 
-function resolveShadowAbsolutePath(root: ShadowRoot, absolutePath: string): Element | null {
+function resolveShadowAbsolutePath(
+  root: ShadowRoot,
+  absolutePath: string,
+): Element | null {
   const steps = absolutePath
     .split("/")
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean);
 
   let current: ParentNode = root;
@@ -115,7 +129,7 @@ function fallbackEvalXPathSingle(doc: Document, xpath: string): Element | null {
   if (trimmed.startsWith("/")) {
     const steps = trimmed
       .split("/")
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean);
 
     let current: ParentNode = doc;
@@ -153,7 +167,11 @@ function fallbackEvalXPathSingle(doc: Document, xpath: string): Element | null {
   return null;
 }
 
-function nthChildByLocalName(parent: ParentNode, localName: string, index1: number): Element | null {
+function nthChildByLocalName(
+  parent: ParentNode,
+  localName: string,
+  index1: number,
+): Element | null {
   const children =
     parent instanceof Document
       ? [parent.documentElement]
@@ -173,7 +191,11 @@ function nthChildByLocalName(parent: ParentNode, localName: string, index1: numb
   return null;
 }
 
-function nthChildByTagName(parent: ParentNode, tagName: string, index1: number): Element | null {
+function nthChildByTagName(
+  parent: ParentNode,
+  tagName: string,
+  index1: number,
+): Element | null {
   const children =
     parent instanceof Document
       ? [parent.documentElement]
@@ -192,5 +214,3 @@ function nthChildByTagName(parent: ParentNode, tagName: string, index1: number):
   }
   return null;
 }
-
-

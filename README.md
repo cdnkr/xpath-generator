@@ -18,7 +18,7 @@ This was engineered with the same mental model as “selector insertion” featu
 
 ### Text content is powerful… and also dangerous
 
-XPath can select elements by their text content. That’s useful, but in template scenarios it’s often exactly what you *should not* anchor to:
+XPath can select elements by their text content. That’s useful, but in template scenarios it’s often exactly what you _should not_ anchor to:
 
 - **User-generated content**: usernames, real names, product titles, handles
 - **Dynamic content**: prices, timestamps, counts, “recommended for you”
@@ -55,7 +55,7 @@ The algorithm is “**generate many candidates → validate uniqueness → rank*
    - fewer steps (shorter paths)
    - shorter strings
 
-This structure lets the generator try aggressive ideas while only emitting selectors that are correct *on the current page*.
+This structure lets the generator try aggressive ideas while only emitting selectors that are correct _on the current page_.
 
 ## Strategy priority (what it prefers)
 

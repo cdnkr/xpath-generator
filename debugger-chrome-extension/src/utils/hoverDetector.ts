@@ -19,8 +19,8 @@ export class HoverDetector {
 
     for (const node of path) {
       if (!(node instanceof Element)) continue;
-      if (node.id === 'selector-extension-root') return true;
-      if (node.id === 'selector-extension-overlay') return true;
+      if (node.id === "selector-extension-root") return true;
+      if (node.id === "selector-extension-overlay") return true;
     }
 
     return false;
@@ -38,7 +38,10 @@ export class HoverDetector {
       if (!(node instanceof Element)) continue;
 
       // Skip our own UI (both light DOM overlay + shadow-hosted controls)
-      if (node.id === 'selector-extension-root' || node.id === 'selector-extension-overlay') {
+      if (
+        node.id === "selector-extension-root" ||
+        node.id === "selector-extension-overlay"
+      ) {
         return null;
       }
 
@@ -57,9 +60,17 @@ export class HoverDetector {
     // NOTE: We prefer pointermove over mouseover.
     // In practice, mouseover may only fire once when entering a shadow root, and then not
     // for subsequent internal shadow DOM transitions at the document level.
-    document.addEventListener('pointermove', this.handlePointerMoveBound, { capture: true, passive: true });
-    document.addEventListener('scroll', this.handleScrollBound, { capture: true, passive: true });
-    document.addEventListener('click', this.handleClickBound, { capture: true });
+    document.addEventListener("pointermove", this.handlePointerMoveBound, {
+      capture: true,
+      passive: true,
+    });
+    document.addEventListener("scroll", this.handleScrollBound, {
+      capture: true,
+      passive: true,
+    });
+    document.addEventListener("click", this.handleClickBound, {
+      capture: true,
+    });
   }
 
   public stop() {
@@ -67,9 +78,15 @@ export class HoverDetector {
     this.active = false;
     this.callback = null;
     this.lastElement = null;
-    document.removeEventListener('pointermove', this.handlePointerMoveBound, { capture: true });
-    document.removeEventListener('scroll', this.handleScrollBound, { capture: true });
-    document.removeEventListener('click', this.handleClickBound, { capture: true });
+    document.removeEventListener("pointermove", this.handlePointerMoveBound, {
+      capture: true,
+    });
+    document.removeEventListener("scroll", this.handleScrollBound, {
+      capture: true,
+    });
+    document.removeEventListener("click", this.handleClickBound, {
+      capture: true,
+    });
   }
 
   private handlePointerMove(e: PointerEvent) {
@@ -92,7 +109,7 @@ export class HoverDetector {
   private handleScroll() {
     // Re-emit the last element on scroll to update position
     if (this.active && this.lastElement && this.callback) {
-        this.callback(this.lastElement);
+      this.callback(this.lastElement);
     }
   }
 
@@ -107,7 +124,7 @@ export class HoverDetector {
 
     e.preventDefault();
     e.stopPropagation();
-    
+
     // We no longer save to history on click. The click is just blocked to prevent navigation.
   }
 }

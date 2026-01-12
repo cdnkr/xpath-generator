@@ -44,10 +44,10 @@ npm run build
 In the bottom-left corner of the page, the extension renders a small menu with two buttons:
 
 - **Select icon**: toggles “selector mode”. Only when selector mode is enabled will the extension outline elements on the page and display the generated XPath for the currently hovered element.
-![Screenshot](screenshots/selector.png)
+  ![Screenshot](screenshots/selector.png)
 
 - **List icon**: shows the list of saved selectors for the current site/page.
-![Screenshot](screenshots/saved.png)
+  ![Screenshot](screenshots/saved.png)
 
 While selector mode is enabled:
 

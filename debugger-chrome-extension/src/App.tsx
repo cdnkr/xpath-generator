@@ -50,11 +50,11 @@ function App() {
 
   return (
     <div className="xpath-generator-app">
-      <HistoryPopover 
-        isOpen={isHistoryOpen} 
-        onClose={() => setIsHistoryOpen(false)} 
+      <HistoryPopover
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
       />
-      <Menu 
+      <Menu
         onSelectorClick={handleSelectorClick}
         onHistoryClick={handleHistoryClick}
         isSelectionActive={isSelectionMode}

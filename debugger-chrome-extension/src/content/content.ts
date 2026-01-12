@@ -1,9 +1,9 @@
 // Content script that injects React app into shadow DOM
-import { renderApp } from '../main';
-import styles from '../index.css?inline';
+import { renderApp } from "../main";
+import styles from "../index.css?inline";
 
 // Create a unique ID for our shadow DOM container
-const SHADOW_HOST_ID = 'selector-extension-root';
+const SHADOW_HOST_ID = "selector-extension-root";
 
 function createShadowDOM() {
   // Check if already injected
@@ -12,7 +12,7 @@ function createShadowDOM() {
   }
 
   // Create host element
-  const host = document.createElement('div');
+  const host = document.createElement("div");
   host.id = SHADOW_HOST_ID;
   host.style.cssText = `
     position: fixed;
@@ -25,16 +25,16 @@ function createShadowDOM() {
   `;
 
   // Create shadow root
-  const shadowRoot = host.attachShadow({ mode: 'open' });
+  const shadowRoot = host.attachShadow({ mode: "open" });
 
   // Inject styles into shadow DOM
-  const styleElement = document.createElement('style');
+  const styleElement = document.createElement("style");
   styleElement.textContent = styles;
   shadowRoot.appendChild(styleElement);
 
   // Create container for React app
-  const container = document.createElement('div');
-  container.id = 'react-root';
+  const container = document.createElement("div");
+  container.id = "react-root";
   container.style.cssText = `
     pointer-events: none;
     width: 100%;
@@ -49,8 +49,8 @@ function createShadowDOM() {
 }
 
 // Wait for DOM to be ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', createShadowDOM);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", createShadowDOM);
 } else {
   createShadowDOM();
 }

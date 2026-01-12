@@ -7,7 +7,7 @@ export interface HistoryItem {
 }
 
 export const storage = {
-  async saveHistoryItem(item: Omit<HistoryItem, 'timestamp'>): Promise<void> {
+  async saveHistoryItem(item: Omit<HistoryItem, "timestamp">): Promise<void> {
     try {
       const newItem: HistoryItem = {
         ...item,
@@ -17,47 +17,65 @@ export const storage = {
       const items = await this.getHistoryItems();
       // Add to beginning and limit to last 50 items
       const updatedItems = [newItem, ...items].slice(0, 50);
-      
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
         await chrome.storage.local.set({ history: updatedItems });
       }
     } catch (error) {
-      console.error('Failed to save history item:', error);
+      console.error("Failed to save history item:", error);
     }
   },
 
   async getHistoryItems(): Promise<HistoryItem[]> {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const result = await chrome.storage.local.get(['history']);
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        const result = await chrome.storage.local.get(["history"]);
         return result.history || [];
       }
       return [];
     } catch (error) {
-      console.error('Failed to get history items:', error);
+      console.error("Failed to get history items:", error);
       return [];
     }
   },
 
   async removeHistoryItem(timestamp: number): Promise<void> {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
         const items = await this.getHistoryItems();
-        const updatedItems = items.filter(item => item.timestamp !== timestamp);
+        const updatedItems = items.filter(
+          (item) => item.timestamp !== timestamp,
+        );
         await chrome.storage.local.set({ history: updatedItems });
       }
     } catch (error) {
-      console.error('Failed to remove history item:', error);
+      console.error("Failed to remove history item:", error);
     }
   },
 
   async clearHistory(): Promise<void> {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        await chrome.storage.local.remove('history');
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.storage &&
+        chrome.storage.local
+      ) {
+        await chrome.storage.local.remove("history");
       }
     } catch (error) {
-      console.error('Failed to clear history:', error);
+      console.error("Failed to clear history:", error);
     }
-  }
+  },
 };

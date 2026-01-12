@@ -1,8 +1,8 @@
-import { generateXPath } from '../../../generateXPath';
-import { storage } from './storage';
-import { getFaviconUrl } from './favicon';
+import { generateXPath } from "../../../generateXPath";
+import { storage } from "./storage";
+import { getFaviconUrl } from "./favicon";
 
-const OVERLAY_ID = 'selector-extension-overlay';
+const OVERLAY_ID = "selector-extension-overlay";
 
 export class Overlay {
   private overlayElement: HTMLElement | null = null;
@@ -20,7 +20,7 @@ export class Overlay {
     if (document.getElementById(OVERLAY_ID)) return;
 
     // Container for overlay elements
-    const container = document.createElement('div');
+    const container = document.createElement("div");
     container.id = OVERLAY_ID;
     container.style.cssText = `
       position: absolute;
@@ -33,7 +33,7 @@ export class Overlay {
     `;
 
     // Border element
-    this.overlayElement = document.createElement('div');
+    this.overlayElement = document.createElement("div");
     this.overlayElement.style.cssText = `
       position: absolute;
       border: 2px solid #007AFF;
@@ -46,7 +46,7 @@ export class Overlay {
     `;
 
     // Label element
-    this.labelElement = document.createElement('div');
+    this.labelElement = document.createElement("div");
     this.labelElement.style.cssText = `
       position: absolute;
       background-color: #007AFF;
@@ -68,18 +68,20 @@ export class Overlay {
     container.appendChild(this.overlayElement);
     container.appendChild(this.labelElement);
     document.body.appendChild(container);
-    
+
     // Add document-level click listener to detect clicks on overlay
-    document.addEventListener('click', this.handleDocumentClickBound, { capture: true });
+    document.addEventListener("click", this.handleDocumentClickBound, {
+      capture: true,
+    });
   }
 
   private handleDocumentClick(e: MouseEvent) {
     // Only handle if overlay is visible and we have bounds
     if (!this.overlayBounds || !this.activeElement) return;
-    
+
     // Don't handle clicks on extension controls
     // Check if the click originated from within the extension's shadow DOM
-    const shadowHost = document.getElementById('selector-extension-root');
+    const shadowHost = document.getElementById("selector-extension-root");
     if (shadowHost) {
       // Use composedPath to check if the click is from within the shadow DOM
       // When clicking inside shadow DOM, the shadow host will be in the path
@@ -88,17 +90,17 @@ export class Overlay {
         return;
       }
     }
-    
+
     // Check if click is within overlay bounds
     const clickX = e.clientX;
     const clickY = e.clientY;
-    
-    const withinBounds = 
+
+    const withinBounds =
       clickX >= this.overlayBounds.left &&
       clickX <= this.overlayBounds.right &&
       clickY >= this.overlayBounds.top &&
       clickY <= this.overlayBounds.bottom;
-    
+
     if (withinBounds) {
       e.stopPropagation();
       this.handleSave();
@@ -107,36 +109,36 @@ export class Overlay {
 
   private async handleSave() {
     if (this.activeElement) {
-        try {
-            const startRect = this.labelElement?.getBoundingClientRect();
-            const selector = generateXPath(this.activeElement as HTMLElement);
-            const pageUrl = window.location.href;
-            const iconUrl = getFaviconUrl();
-            const innerText = (this.activeElement as HTMLElement).innerText || '';
+      try {
+        const startRect = this.labelElement?.getBoundingClientRect();
+        const selector = generateXPath(this.activeElement as HTMLElement);
+        const pageUrl = window.location.href;
+        const iconUrl = getFaviconUrl();
+        const innerText = (this.activeElement as HTMLElement).innerText || "";
 
-            await storage.saveHistoryItem({
-                selector,
-                pageUrl,
-                iconUrl,
-                innerText
-            });
-            console.log('Saved selector:', selector);
+        await storage.saveHistoryItem({
+          selector,
+          pageUrl,
+          iconUrl,
+          innerText,
+        });
+        console.log("Saved selector:", selector);
 
-            // Trigger animation
-            if (startRect) {
-                this.animateToHistory(startRect);
-            } else {
-                window.dispatchEvent(new CustomEvent('selector-item-added'));
-            }
-        } catch (error) {
-            console.error('Failed to save selector:', error);
+        // Trigger animation
+        if (startRect) {
+          this.animateToHistory(startRect);
+        } else {
+          window.dispatchEvent(new CustomEvent("selector-item-added"));
         }
+      } catch (error) {
+        console.error("Failed to save selector:", error);
+      }
     }
   }
 
   public async highlight(element: Element | null, _e?: MouseEvent) {
     this.activeElement = element;
-    
+
     if (!element) {
       this.hide();
       return;
@@ -148,7 +150,7 @@ export class Overlay {
 
     const rect = element.getBoundingClientRect();
     const selector = await generateXPath(element as HTMLElement);
-    
+
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
     const absoluteTop = rect.top + scrollTop;
@@ -159,38 +161,38 @@ export class Overlay {
 
     // Reset styles to default blue
     if (this.overlayElement) {
-        this.overlayElement.style.border = '2px solid #007AFF';
-        this.overlayElement.style.display = 'block';
-        this.overlayElement.style.top = `${absoluteTop}px`;
-        this.overlayElement.style.left = `${absoluteLeft}px`;
-        this.overlayElement.style.width = `${rect.width}px`;
-        this.overlayElement.style.height = `${rect.height}px`;
+      this.overlayElement.style.border = "2px solid #007AFF";
+      this.overlayElement.style.display = "block";
+      this.overlayElement.style.top = `${absoluteTop}px`;
+      this.overlayElement.style.left = `${absoluteLeft}px`;
+      this.overlayElement.style.width = `${rect.width}px`;
+      this.overlayElement.style.height = `${rect.height}px`;
     }
-    
+
     if (this.labelElement) {
-        this.labelElement.style.backgroundColor = '#007AFF';
-        this.labelElement.style.color = 'white';
-        this.labelElement.style.display = 'block';
-        this.labelElement.textContent = selector;
-        
-        let labelTop = absoluteTop;
-        // If close to top edge, show below
-        if (rect.top < 30) {
-            this.labelElement.style.transform = 'translateY(0)';
-            this.labelElement.style.marginTop = '4px';
-            labelTop = absoluteTop + rect.height;
-        } else {
-             this.labelElement.style.transform = 'translateY(-100%)';
-             this.labelElement.style.marginTop = '-4px';
-        }
-        this.labelElement.style.top = `${labelTop}px`;
-        this.labelElement.style.left = `${absoluteLeft}px`;
+      this.labelElement.style.backgroundColor = "#007AFF";
+      this.labelElement.style.color = "white";
+      this.labelElement.style.display = "block";
+      this.labelElement.textContent = selector;
+
+      let labelTop = absoluteTop;
+      // If close to top edge, show below
+      if (rect.top < 30) {
+        this.labelElement.style.transform = "translateY(0)";
+        this.labelElement.style.marginTop = "4px";
+        labelTop = absoluteTop + rect.height;
+      } else {
+        this.labelElement.style.transform = "translateY(-100%)";
+        this.labelElement.style.marginTop = "-4px";
+      }
+      this.labelElement.style.top = `${labelTop}px`;
+      this.labelElement.style.left = `${absoluteLeft}px`;
     }
   }
 
   public hide() {
-    if (this.overlayElement) this.overlayElement.style.display = 'none';
-    if (this.labelElement) this.labelElement.style.display = 'none';
+    if (this.overlayElement) this.overlayElement.style.display = "none";
+    if (this.labelElement) this.labelElement.style.display = "none";
     this.activeElement = null;
     this.overlayBounds = null;
   }
@@ -199,31 +201,31 @@ export class Overlay {
     this.highlight(element);
 
     if (this.overlayElement) {
-        this.overlayElement.style.border = '2px solid #FFD700';
+      this.overlayElement.style.border = "2px solid #FFD700";
     }
 
     if (this.labelElement) {
-        this.labelElement.textContent = selector;
-        this.labelElement.style.backgroundColor = '#FFD700';
-        this.labelElement.style.color = 'black';
+      this.labelElement.textContent = selector;
+      this.labelElement.style.backgroundColor = "#FFD700";
+      this.labelElement.style.color = "black";
     }
   }
 
   private animateToHistory(startRect: DOMRect) {
-    const shadowHost = document.getElementById('selector-extension-root');
+    const shadowHost = document.getElementById("selector-extension-root");
     const shadowRoot = shadowHost?.shadowRoot;
-    const historyBtn = shadowRoot?.getElementById('selector-history-button');
+    const historyBtn = shadowRoot?.getElementById("selector-history-button");
 
     // If button not found or hidden, dispatch event immediately
     if (!historyBtn) {
-        window.dispatchEvent(new CustomEvent('selector-item-added'));
-        return;
+      window.dispatchEvent(new CustomEvent("selector-item-added"));
+      return;
     }
 
     const targetRect = historyBtn.getBoundingClientRect();
     if (targetRect.width < 5) {
-         window.dispatchEvent(new CustomEvent('selector-item-added'));
-         return;
+      window.dispatchEvent(new CustomEvent("selector-item-added"));
+      return;
     }
 
     const size = 24;
@@ -232,7 +234,7 @@ export class Overlay {
     const endX = targetRect.left + targetRect.width / 2 - size / 2;
     const endY = targetRect.top + targetRect.height / 2 - size / 2;
 
-    const wrapper = document.createElement('div');
+    const wrapper = document.createElement("div");
     wrapper.style.cssText = `
         position: fixed;
         top: 0;
@@ -242,9 +244,9 @@ export class Overlay {
         pointer-events: none;
         z-index: 2147483647;
     `;
-    
+
     // X Mover (Linear)
-    const xMover = document.createElement('div');
+    const xMover = document.createElement("div");
     xMover.style.cssText = `
         position: absolute;
         left: ${startX}px;
@@ -256,7 +258,7 @@ export class Overlay {
     `;
 
     // Y Mover (Ease In - Gravity effect)
-    const yMover = document.createElement('div');
+    const yMover = document.createElement("div");
     yMover.style.cssText = `
         position: absolute;
         left: 0;
@@ -272,7 +274,7 @@ export class Overlay {
         align-items: center;
         justify-content: center;
     `;
-    
+
     // Add SVG icon
     yMover.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -290,20 +292,22 @@ export class Overlay {
     xMover.getBoundingClientRect();
 
     requestAnimationFrame(() => {
-        xMover.style.transform = `translateX(${endX - startX}px)`;
-        yMover.style.transform = `translateY(${endY - startY}px)`;
+      xMover.style.transform = `translateX(${endX - startX}px)`;
+      yMover.style.transform = `translateY(${endY - startY}px)`;
     });
 
     setTimeout(() => {
-        wrapper.remove();
-        window.dispatchEvent(new CustomEvent('selector-item-added'));
+      wrapper.remove();
+      window.dispatchEvent(new CustomEvent("selector-item-added"));
     }, 600);
   }
 
   public cleanup() {
     // Remove document-level listener
-    document.removeEventListener('click', this.handleDocumentClickBound, { capture: true });
-    
+    document.removeEventListener("click", this.handleDocumentClickBound, {
+      capture: true,
+    });
+
     const container = document.getElementById(OVERLAY_ID);
     if (container) {
       container.remove();

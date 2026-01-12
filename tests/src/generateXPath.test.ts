@@ -1,5 +1,9 @@
 import { generateXPath } from "../../generateXPath";
-import { documentFromHtml, readFixtureHtml, resolveGeneratedSelector } from "./testUtils";
+import {
+  documentFromHtml,
+  readFixtureHtml,
+  resolveGeneratedSelector,
+} from "./testUtils";
 
 // Defensive polyfill for environments where jsdom doesn't expose CSS.escape.
 if (!(globalThis as any).CSS) (globalThis as any).CSS = {};
@@ -13,7 +17,12 @@ function expectResolvesOn(doc: Document, selector: string, expected: Element) {
   expect(resolved).toBe(expected);
 }
 
-function expectSameXPathAcrossPages(docA: Document, docB: Document, elA: Element, elB: Element) {
+function expectSameXPathAcrossPages(
+  docA: Document,
+  docB: Document,
+  elA: Element,
+  elB: Element,
+) {
   const xpathA = generateXPath(elA);
   const xpathB = generateXPath(elB);
 
@@ -92,8 +101,12 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     const titleA = docA.querySelector(".titleText") as Element;
     const titleB = docB.querySelector(".titleText") as Element;
 
-    const priceLabelA = Array.from(docA.querySelectorAll("span.label")).find(el => el.textContent?.trim() === "Price:") as Element;
-    const priceLabelB = Array.from(docB.querySelectorAll("span.label")).find(el => el.textContent?.trim() === "Price:") as Element;
+    const priceLabelA = Array.from(docA.querySelectorAll("span.label")).find(
+      (el) => el.textContent?.trim() === "Price:",
+    ) as Element;
+    const priceLabelB = Array.from(docB.querySelectorAll("span.label")).find(
+      (el) => el.textContent?.trim() === "Price:",
+    ) as Element;
     const priceA = priceLabelA.nextElementSibling as Element;
     const priceB = priceLabelB.nextElementSibling as Element;
 
@@ -105,10 +118,18 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     const docA = documentFromHtml(readFixtureHtml("case6-hex-a.html"));
     const docB = documentFromHtml(readFixtureHtml("case6-hex-b.html"));
 
-    const titleA = docA.querySelector("[data-testid='product-title']") as Element;
-    const titleB = docB.querySelector("[data-testid='product-title']") as Element;
-    const priceA = docA.querySelector("[data-testid='product-price']") as Element;
-    const priceB = docB.querySelector("[data-testid='product-price']") as Element;
+    const titleA = docA.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const titleB = docB.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const priceA = docA.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
+    const priceB = docB.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
 
     // Demonstrate the "reload" changed IDs.
     expect((titleA as HTMLElement).id).not.toBe((titleB as HTMLElement).id);
@@ -125,10 +146,18 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     const docA = documentFromHtml(readFixtureHtml("case6-trailing5-a.html"));
     const docB = documentFromHtml(readFixtureHtml("case6-trailing5-b.html"));
 
-    const titleA = docA.querySelector("[data-testid='product-title']") as Element;
-    const titleB = docB.querySelector("[data-testid='product-title']") as Element;
-    const priceA = docA.querySelector("[data-testid='product-price']") as Element;
-    const priceB = docB.querySelector("[data-testid='product-price']") as Element;
+    const titleA = docA.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const titleB = docB.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const priceA = docA.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
+    const priceB = docB.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
 
     expect((titleA as HTMLElement).id).not.toBe((titleB as HTMLElement).id);
     expect((priceA as HTMLElement).id).not.toBe((priceB as HTMLElement).id);
@@ -144,10 +173,18 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     const docA = documentFromHtml(readFixtureHtml("case6-framework-a.html"));
     const docB = documentFromHtml(readFixtureHtml("case6-framework-b.html"));
 
-    const titleA = docA.querySelector("[data-testid='product-title']") as Element;
-    const titleB = docB.querySelector("[data-testid='product-title']") as Element;
-    const priceA = docA.querySelector("[data-testid='product-price']") as Element;
-    const priceB = docB.querySelector("[data-testid='product-price']") as Element;
+    const titleA = docA.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const titleB = docB.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const priceA = docA.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
+    const priceB = docB.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
 
     expect((titleA as HTMLElement).id).not.toBe((titleB as HTMLElement).id);
     expect((priceA as HTMLElement).id).not.toBe((priceB as HTMLElement).id);
@@ -163,10 +200,18 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
     const docA = documentFromHtml(readFixtureHtml("case6-suffix-a.html"));
     const docB = documentFromHtml(readFixtureHtml("case6-suffix-b.html"));
 
-    const titleA = docA.querySelector("[data-testid='product-title']") as Element;
-    const titleB = docB.querySelector("[data-testid='product-title']") as Element;
-    const priceA = docA.querySelector("[data-testid='product-price']") as Element;
-    const priceB = docB.querySelector("[data-testid='product-price']") as Element;
+    const titleA = docA.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const titleB = docB.querySelector(
+      "[data-testid='product-title']",
+    ) as Element;
+    const priceA = docA.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
+    const priceB = docB.querySelector(
+      "[data-testid='product-price']",
+    ) as Element;
 
     expect((titleA as HTMLElement).id).not.toBe((titleB as HTMLElement).id);
     expect((priceA as HTMLElement).id).not.toBe((priceB as HTMLElement).id);
@@ -203,7 +248,9 @@ describe("generateXPath (core) – cross-page stability fixtures", () => {
 
 describe("generateXPath (core) – Shadow DOM + SVG fixtures", () => {
   it("7) Nested element within a custom element Shadow DOM returns compound selector that resolves", () => {
-    const doc = documentFromHtml(readFixtureHtml("case7-custom-component.html"));
+    const doc = documentFromHtml(
+      readFixtureHtml("case7-custom-component.html"),
+    );
     const host = doc.querySelector("my-product") as HTMLElement;
     expect(host).not.toBeNull();
 

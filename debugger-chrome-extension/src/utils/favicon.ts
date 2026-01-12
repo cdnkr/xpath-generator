@@ -4,8 +4,7 @@ export function getFaviconUrl(): string {
   if (link && (link as HTMLLinkElement).href) {
     return (link as HTMLLinkElement).href;
   }
-  
+
   // 2. Fallback to default location
   return `${window.location.protocol}//${window.location.host}/favicon.ico`;
 }
-

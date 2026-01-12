@@ -15,17 +15,39 @@
 
 // Constants
 const STABLE_ATTRIBUTES = [
-    'data-testid', 'data-cy', 'data-qa',
-    'id', 'name', 'role', 'placeholder'
+  "data-testid",
+  "data-cy",
+  "data-qa",
+  "id",
+  "name",
+  "role",
+  "placeholder",
 ];
 
 // Tags stable enough to use as unique tag selectors (semantic/structural elements)
 const UNIQUE_TAG_WHITELIST = new Set([
-    'body', 'main', 'header', 'footer', 'nav', 'aside',  // Document structure
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',                  // Headings
-    'form', 'search',                                    // Forms
-    'video', 'audio', 'canvas', 'iframe',                // Media
-    'table', 'thead', 'tbody', 'tfoot',                  // Tables
+  "body",
+  "main",
+  "header",
+  "footer",
+  "nav",
+  "aside", // Document structure
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6", // Headings
+  "form",
+  "search", // Forms
+  "video",
+  "audio",
+  "canvas",
+  "iframe", // Media
+  "table",
+  "thead",
+  "tbody",
+  "tfoot", // Tables
 ]);
 
 const MAX_ANCESTOR_DEPTH = 50;
@@ -35,453 +57,493 @@ const MAX_LABEL_LENGTH = 30;
 
 // Main function
 export function generateXPath(element: Element): string {
-    if (!element || element.nodeType !== Node.ELEMENT_NODE) {
-        throw new Error("Invalid input: Input must be a DOM Element.");
-    }
+  if (!element || element.nodeType !== Node.ELEMENT_NODE) {
+    throw new Error("Invalid input: Input must be a DOM Element.");
+  }
 
-    // Handle Shadow DOM with compound selector: `docXPath|shadowPath|shadowPath...`
-    const shadowPaths: string[] = [];
-    let current: Element = element;
+  // Handle Shadow DOM with compound selector: `docXPath|shadowPath|shadowPath...`
+  const shadowPaths: string[] = [];
+  let current: Element = element;
 
-    while (true) {
-        const root = current.getRootNode();
-        if (!(root instanceof ShadowRoot)) break;
-        shadowPaths.unshift(getShadowAbsolutePath(root, current));
-        current = root.host;
-    }
+  while (true) {
+    const root = current.getRootNode();
+    if (!(root instanceof ShadowRoot)) break;
+    shadowPaths.unshift(getShadowAbsolutePath(root, current));
+    current = root.host;
+  }
 
-    const base = generateXPathInDocument(current);
-    return shadowPaths.length === 0 ? base : `${base}|${shadowPaths.join('|')}`;
+  const base = generateXPathInDocument(current);
+  return shadowPaths.length === 0 ? base : `${base}|${shadowPaths.join("|")}`;
 }
 
 function generateXPathInDocument(element: Element): string {
-    const doc = element.ownerDocument;
-    const candidates = collectAllCandidates(element);
+  const doc = element.ownerDocument;
+  const candidates = collectAllCandidates(element);
 
-    // Dedupe and validate uniqueness
-    const validCandidates = dedupeAndValidate(candidates, doc);
+  // Dedupe and validate uniqueness
+  const validCandidates = dedupeAndValidate(candidates, doc);
 
-    console.log('deduped', validCandidates);
+  console.log("deduped", validCandidates);
 
-    if (validCandidates.length === 0) {
-        return getAbsolutePath(element);
-    }
+  if (validCandidates.length === 0) {
+    return getAbsolutePath(element);
+  }
 
-    // Sort: higher score first, then fewer steps, then shorter string
-    validCandidates.sort((a, b) => {
-        if (a.score !== b.score) return b.score - a.score;
-        const stepDiff = countXPathSteps(a.xpath) - countXPathSteps(b.xpath);
-        if (stepDiff !== 0) return stepDiff;
-        return a.xpath.length - b.xpath.length;
-    });
+  // Sort: higher score first, then fewer steps, then shorter string
+  validCandidates.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    const stepDiff = countXPathSteps(a.xpath) - countXPathSteps(b.xpath);
+    if (stepDiff !== 0) return stepDiff;
+    return a.xpath.length - b.xpath.length;
+  });
 
-    return validCandidates[0].xpath;
+  return validCandidates[0].xpath;
 }
 
 // Candidate Collection
 interface Candidate {
-    xpath: string;
-    score: number;
+  xpath: string;
+  score: number;
 }
 
 function collectAllCandidates(element: Element): Candidate[] {
-    const doc = element.ownerDocument;
-    const candidates: Candidate[] = [];
+  const doc = element.ownerDocument;
+  const candidates: Candidate[] = [];
 
-    // Tag name uniqueness
-    const tagSelector = getUniqueTagNameSelector(element);
-    if (tagSelector) {
-        candidates.push({ xpath: tagSelector, score: 90 });
-    }
+  // Tag name uniqueness
+  const tagSelector = getUniqueTagNameSelector(element);
+  if (tagSelector) {
+    candidates.push({ xpath: tagSelector, score: 90 });
+  }
 
-    // Stable ID
-    if (isStableId(element.id) && isUniqueId(element.id, doc)) {
-        candidates.push({ xpath: `//*[@id='${element.id}']`, score: 100 });
-    }
+  // Stable ID
+  if (isStableId(element.id) && isUniqueId(element.id, doc)) {
+    candidates.push({ xpath: `//*[@id='${element.id}']`, score: 100 });
+  }
 
-    // Direct selectors (attributes, labels, text)
-    candidates.push(...getDirectSelectors(element).map(xpath => ({ xpath, score: 80 })));
+  // Direct selectors (attributes, labels, text)
+  candidates.push(
+    ...getDirectSelectors(element).map((xpath) => ({ xpath, score: 80 })),
+  );
 
-    // Ancestor-based paths
-    candidates.push(...getAncestorPaths(element).map(xpath => ({ xpath, score: 70 })));
+  // Ancestor-based paths
+  candidates.push(
+    ...getAncestorPaths(element).map((xpath) => ({ xpath, score: 70 })),
+  );
 
-    // Sibling-based paths
-    candidates.push(...getSiblingPaths(element).map(xpath => ({ xpath, score: 60 })));
+  // Sibling-based paths
+  candidates.push(
+    ...getSiblingPaths(element).map((xpath) => ({ xpath, score: 60 })),
+  );
 
-    // Class-based selectors
-    candidates.push(...getClassSelectors(element).map(xpath => ({ xpath, score: 40 })));
+  // Class-based selectors
+  candidates.push(
+    ...getClassSelectors(element).map((xpath) => ({ xpath, score: 40 })),
+  );
 
-    // Absolute fallback
-    const abs = getAbsolutePath(element);
-    if (isUnique(abs, doc)) {
-        candidates.push({ xpath: abs, score: 0 });
-    }
+  // Absolute fallback
+  const abs = getAbsolutePath(element);
+  if (isUnique(abs, doc)) {
+    candidates.push({ xpath: abs, score: 0 });
+  }
 
-    return candidates;
+  return candidates;
 }
 
-function dedupeAndValidate(candidates: Candidate[], doc: Document): Candidate[] {
-    const result: Candidate[] = [];
-    const seen = new Set<string>();
+function dedupeAndValidate(
+  candidates: Candidate[],
+  doc: Document,
+): Candidate[] {
+  const result: Candidate[] = [];
+  const seen = new Set<string>();
 
-    for (const c of candidates) {
-        if (!c.xpath || seen.has(c.xpath)) continue;
-        if (!isUnique(c.xpath, doc)) continue;
-        seen.add(c.xpath);
-        result.push(c);
-    }
+  for (const c of candidates) {
+    if (!c.xpath || seen.has(c.xpath)) continue;
+    if (!isUnique(c.xpath, doc)) continue;
+    seen.add(c.xpath);
+    result.push(c);
+  }
 
-    return result;
+  return result;
 }
 
 // Strategy: Direct Selectors
 function getDirectSelectors(element: Element): string[] {
-    const doc = element.ownerDocument;
-    const nodeTest = getNodeTest(element);
-    const selectors: string[] = [];
+  const doc = element.ownerDocument;
+  const nodeTest = getNodeTest(element);
+  const selectors: string[] = [];
 
-    // Stable attribute
-    const stableAttr = getUniqueStableAttribute(element);
-    if (stableAttr) {
-        selectors.push(`//${nodeTest}[@${stableAttr.name}='${stableAttr.value}']`);
+  // Stable attribute
+  const stableAttr = getUniqueStableAttribute(element);
+  if (stableAttr) {
+    selectors.push(`//${nodeTest}[@${stableAttr.name}='${stableAttr.value}']`);
+  }
+
+  // Label anchoring
+  const labelPath = getLabelAnchoredPath(element);
+  if (labelPath) {
+    selectors.push(labelPath);
+  }
+
+  // Text anchoring
+  if (hasStableText(element)) {
+    const text = element.textContent?.trim() || "";
+    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
+    if (isUnique(xpath, doc)) {
+      selectors.push(xpath);
     }
+  }
 
-    // Label anchoring
-    const labelPath = getLabelAnchoredPath(element);
-    if (labelPath) {
-        selectors.push(labelPath);
-    }
-
-    // Text anchoring
-    if (hasStableText(element)) {
-        const text = element.textContent?.trim() || "";
-        const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-        if (isUnique(xpath, doc)) {
-            selectors.push(xpath);
-        }
-    }
-
-    return selectors;
+  return selectors;
 }
 
 function getUniqueTagNameSelector(element: Element): string | null {
-    const tag = element.tagName.toLowerCase();
-    if (!UNIQUE_TAG_WHITELIST.has(tag)) return null;
+  const tag = element.tagName.toLowerCase();
+  if (!UNIQUE_TAG_WHITELIST.has(tag)) return null;
 
-    const xpath = `//${getNodeTest(element)}`;
-    return isUnique(xpath, element.ownerDocument) ? xpath : null;
+  const xpath = `//${getNodeTest(element)}`;
+  return isUnique(xpath, element.ownerDocument) ? xpath : null;
 }
 
 function getLabelAnchoredPath(element: Element): string | null {
-    const prev = element.previousElementSibling;
-    if (!prev || !hasStableText(prev)) return null;
+  const prev = element.previousElementSibling;
+  if (!prev || !hasStableText(prev)) return null;
 
-    const text = prev.textContent?.trim() || "";
-    if (text.length > MAX_LABEL_LENGTH || text.length < MIN_STABLE_TEXT_LENGTH) return null;
+  const text = prev.textContent?.trim() || "";
+  if (text.length > MAX_LABEL_LENGTH || text.length < MIN_STABLE_TEXT_LENGTH)
+    return null;
 
-    const labelXpath = `//${prev.tagName.toLowerCase()}[normalize-space(text())='${escapeXPathString(text)}']`;
-    if (!isUnique(labelXpath, element.ownerDocument)) return null;
+  const labelXpath = `//${prev.tagName.toLowerCase()}[normalize-space(text())='${escapeXPathString(text)}']`;
+  if (!isUnique(labelXpath, element.ownerDocument)) return null;
 
-    return `${labelXpath}/following-sibling::${getNodeTest(element)}[1]`;
+  return `${labelXpath}/following-sibling::${getNodeTest(element)}[1]`;
 }
 
 // Strategy: Class-Based Selectors
 function getClassSelectors(element: Element): string[] {
-    const doc = element.ownerDocument;
-    const nodeTest = getNodeTest(element);
-    const validClasses = Array.from(element.classList).filter(isStableClass);
-    const selectors: string[] = [];
+  const doc = element.ownerDocument;
+  const nodeTest = getNodeTest(element);
+  const validClasses = Array.from(element.classList).filter(isStableClass);
+  const selectors: string[] = [];
 
-    if (validClasses.length === 0) return selectors;
+  if (validClasses.length === 0) return selectors;
 
-    // All classes combined
-    const allClassesXpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
-    if (isUnique(allClassesXpath, doc)) {
-        selectors.push(allClassesXpath);
+  // All classes combined
+  const allClassesXpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
+  if (isUnique(allClassesXpath, doc)) {
+    selectors.push(allClassesXpath);
+  }
+
+  // Single classes
+  for (const cls of validClasses) {
+    const xpath = `//${nodeTest}[${buildClassPredicate([cls])}]`;
+    if (isUnique(xpath, doc)) {
+      selectors.push(xpath);
     }
+  }
 
-    // Single classes
-    for (const cls of validClasses) {
-        const xpath = `//${nodeTest}[${buildClassPredicate([cls])}]`;
-        if (isUnique(xpath, doc)) {
-            selectors.push(xpath);
-        }
-    }
-
-    return selectors;
+  return selectors;
 }
 
 function buildClassPredicate(classes: string[]): string {
-    return classes
-        .map(c => `contains(@class, '${c}')`)
-        .join(' and ');
+  return classes.map((c) => `contains(@class, '${c}')`).join(" and ");
 }
 
 // Strategy: Ancestor-Based Paths
 function getAncestorPaths(element: Element): string[] {
-    const selectors: string[] = [];
-    const pathSegments: string[] = [];
-    let current: Element | null = element;
-    let depth = 0;
+  const selectors: string[] = [];
+  const pathSegments: string[] = [];
+  let current: Element | null = element;
+  let depth = 0;
 
-    while (current?.parentElement && depth < MAX_ANCESTOR_DEPTH) {
-        depth++;
-        const parent: Element = current.parentElement;
+  while (current?.parentElement && depth < MAX_ANCESTOR_DEPTH) {
+    depth++;
+    const parent: Element = current.parentElement;
 
-        pathSegments.unshift(`${getNodeTest(current)}[${getElementIndex(current)}]`);
-        const relativePath = pathSegments.join('/');
+    pathSegments.unshift(
+      `${getNodeTest(current)}[${getElementIndex(current)}]`,
+    );
+    const relativePath = pathSegments.join("/");
 
-        // Try all anchor strategies on parent
-        selectors.push(...getAnchorXPaths(parent).map(anchor => `${anchor}/${relativePath}`));
+    // Try all anchor strategies on parent
+    selectors.push(
+      ...getAnchorXPaths(parent).map((anchor) => `${anchor}/${relativePath}`),
+    );
 
-        if (parent.tagName === 'BODY') break;
-        current = parent;
-    }
+    if (parent.tagName === "BODY") break;
+    current = parent;
+  }
 
-    return selectors;
+  return selectors;
 }
 
 function getAnchorXPaths(element: Element): string[] {
-    const doc = element.ownerDocument;
-    const nodeTest = getNodeTest(element);
-    const anchors: string[] = [];
+  const doc = element.ownerDocument;
+  const nodeTest = getNodeTest(element);
+  const anchors: string[] = [];
 
-    // Unique tag name
-    const tagXpath = `//${nodeTest}`;
-    if (isUnique(tagXpath, doc)) {
-        anchors.push(tagXpath);
+  // Unique tag name
+  const tagXpath = `//${nodeTest}`;
+  if (isUnique(tagXpath, doc)) {
+    anchors.push(tagXpath);
+  }
+
+  // Stable ID
+  if (isStableId(element.id) && isUniqueId(element.id, doc)) {
+    anchors.push(`//*[@id='${element.id}']`);
+  }
+
+  // Stable attribute
+  const attr = getUniqueStableAttribute(element);
+  if (attr) {
+    anchors.push(`//${nodeTest}[@${attr.name}='${attr.value}']`);
+  }
+
+  // Text anchor
+  if (hasStableText(element)) {
+    const text = element.textContent?.trim() || "";
+    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
+    if (isUnique(xpath, doc)) {
+      anchors.push(xpath);
     }
+  }
 
-    // Stable ID
-    if (isStableId(element.id) && isUniqueId(element.id, doc)) {
-        anchors.push(`//*[@id='${element.id}']`);
+  // Stable classes
+  const validClasses = Array.from(element.classList).filter(isStableClass);
+  if (validClasses.length > 0) {
+    const xpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
+    if (isUnique(xpath, doc)) {
+      anchors.push(xpath);
     }
+  }
 
-    // Stable attribute
-    const attr = getUniqueStableAttribute(element);
-    if (attr) {
-        anchors.push(`//${nodeTest}[@${attr.name}='${attr.value}']`);
-    }
-
-    // Text anchor
-    if (hasStableText(element)) {
-        const text = element.textContent?.trim() || "";
-        const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-        if (isUnique(xpath, doc)) {
-            anchors.push(xpath);
-        }
-    }
-
-    // Stable classes
-    const validClasses = Array.from(element.classList).filter(isStableClass);
-    if (validClasses.length > 0) {
-        const xpath = `//${nodeTest}[${buildClassPredicate(validClasses)}]`;
-        if (isUnique(xpath, doc)) {
-            anchors.push(xpath);
-        }
-    }
-
-    return anchors;
+  return anchors;
 }
 
 // Strategy: Sibling-Based Paths
 function getSiblingPaths(element: Element): string[] {
-    const doc = element.ownerDocument;
-    const nodeTest = getNodeTest(element);
-    const tagLower = element.tagName.toLowerCase();
-    const parent = element.parentElement;
-    if (!parent) return [];
+  const doc = element.ownerDocument;
+  const nodeTest = getNodeTest(element);
+  const tagLower = element.tagName.toLowerCase();
+  const parent = element.parentElement;
+  if (!parent) return [];
 
-    const selectors: string[] = [];
-    const siblings = Array.from(parent.children);
-    const elementIndex = siblings.indexOf(element);
-    if (elementIndex < 0) return [];
+  const selectors: string[] = [];
+  const siblings = Array.from(parent.children);
+  const elementIndex = siblings.indexOf(element);
+  if (elementIndex < 0) return [];
 
-    // Preceding siblings
-    for (let i = elementIndex - 1; i >= 0; i--) {
-        const anchor = getSiblingAnchor(siblings[i], doc);
-        if (!anchor) continue;
-        const count = countSameTagBetween(siblings, i, elementIndex, tagLower);
-        selectors.push(`${anchor}/following-sibling::${nodeTest}[${count}]`);
-    }
+  // Preceding siblings
+  for (let i = elementIndex - 1; i >= 0; i--) {
+    const anchor = getSiblingAnchor(siblings[i], doc);
+    if (!anchor) continue;
+    const count = countSameTagBetween(siblings, i, elementIndex, tagLower);
+    selectors.push(`${anchor}/following-sibling::${nodeTest}[${count}]`);
+  }
 
-    // Following siblings
-    for (let i = elementIndex + 1; i < siblings.length; i++) {
-        const anchor = getSiblingAnchor(siblings[i], doc);
-        if (!anchor) continue;
-        const count = countSameTagBetween(siblings, elementIndex, i, tagLower);
-        selectors.push(`${anchor}/preceding-sibling::${nodeTest}[${count}]`);
-    }
+  // Following siblings
+  for (let i = elementIndex + 1; i < siblings.length; i++) {
+    const anchor = getSiblingAnchor(siblings[i], doc);
+    if (!anchor) continue;
+    const count = countSameTagBetween(siblings, elementIndex, i, tagLower);
+    selectors.push(`${anchor}/preceding-sibling::${nodeTest}[${count}]`);
+  }
 
-    return selectors;
+  return selectors;
 }
 
 function getSiblingAnchor(sibling: Element, doc: Document): string | null {
-    const nodeTest = getNodeTest(sibling);
+  const nodeTest = getNodeTest(sibling);
 
-    // Unique tag
-    const tagXpath = `//${nodeTest}`;
-    if (isUnique(tagXpath, doc)) return tagXpath;
+  // Unique tag
+  const tagXpath = `//${nodeTest}`;
+  if (isUnique(tagXpath, doc)) return tagXpath;
 
-    // Stable ID
-    if (isStableId(sibling.id) && isUniqueId(sibling.id, doc)) {
-        return `//*[@id='${sibling.id}']`;
-    }
+  // Stable ID
+  if (isStableId(sibling.id) && isUniqueId(sibling.id, doc)) {
+    return `//*[@id='${sibling.id}']`;
+  }
 
-    // Stable attribute
-    const attr = getUniqueStableAttribute(sibling);
-    if (attr) {
-        return `//${nodeTest}[@${attr.name}='${attr.value}']`;
-    }
+  // Stable attribute
+  const attr = getUniqueStableAttribute(sibling);
+  if (attr) {
+    return `//${nodeTest}[@${attr.name}='${attr.value}']`;
+  }
 
-    // Text anchor
-    if (hasStableText(sibling)) {
-        const text = sibling.textContent?.trim() || "";
-        const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
-        if (isUnique(xpath, doc)) return xpath;
-    }
+  // Text anchor
+  if (hasStableText(sibling)) {
+    const text = sibling.textContent?.trim() || "";
+    const xpath = `//${nodeTest}[normalize-space(.)='${escapeXPathString(text)}']`;
+    if (isUnique(xpath, doc)) return xpath;
+  }
 
-    return null;
+  return null;
 }
 
-function countSameTagBetween(siblings: Element[], start: number, end: number, tag: string): number {
-    let count = 0;
-    const [from, to] = [Math.min(start, end), Math.max(start, end)];
-    for (let i = from + 1; i <= to; i++) {
-        if (siblings[i].tagName.toLowerCase() === tag) count++;
-    }
-    return count;
+function countSameTagBetween(
+  siblings: Element[],
+  start: number,
+  end: number,
+  tag: string,
+): number {
+  let count = 0;
+  const [from, to] = [Math.min(start, end), Math.max(start, end)];
+  for (let i = from + 1; i <= to; i++) {
+    if (siblings[i].tagName.toLowerCase() === tag) count++;
+  }
+  return count;
 }
 
 // Shadow DOM Support
-function getShadowAbsolutePath(shadowRoot: ShadowRoot, element: Element): string {
-    const segments: string[] = [];
-    let current: Element | null = element;
+function getShadowAbsolutePath(
+  shadowRoot: ShadowRoot,
+  element: Element,
+): string {
+  const segments: string[] = [];
+  let current: Element | null = element;
 
-    while (current) {
-        const parent: ParentNode | null = current.parentNode;
-        if (!parent) break;
+  while (current) {
+    const parent: ParentNode | null = current.parentNode;
+    if (!parent) break;
 
-        const tag = current.localName.toLowerCase();
-        const index = getShadowSiblingIndex(current, parent);
-        segments.unshift(`${tag}[${index}]`);
+    const tag = current.localName.toLowerCase();
+    const index = getShadowSiblingIndex(current, parent);
+    segments.unshift(`${tag}[${index}]`);
 
-        if (parent === shadowRoot) break;
-        if (!(parent instanceof Element)) break;
-        current = parent;
-    }
+    if (parent === shadowRoot) break;
+    if (!(parent instanceof Element)) break;
+    current = parent;
+  }
 
-    return '/' + segments.join('/');
+  return "/" + segments.join("/");
 }
 
 function getShadowSiblingIndex(element: Element, parent: ParentNode): number {
-    const tag = element.localName.toLowerCase();
-    const children = parent instanceof ShadowRoot || parent instanceof Element
-        ? Array.from(parent.children)
-        : [];
+  const tag = element.localName.toLowerCase();
+  const children =
+    parent instanceof ShadowRoot || parent instanceof Element
+      ? Array.from(parent.children)
+      : [];
 
-    let index = 0;
-    for (const child of children) {
-        if (child.localName.toLowerCase() === tag) index++;
-        if (child === element) return index;
-    }
-    return 1;
+  let index = 0;
+  for (const child of children) {
+    if (child.localName.toLowerCase() === tag) index++;
+    if (child === element) return index;
+  }
+  return 1;
 }
 
 // Stability Validators
 function isStableId(id: string): boolean {
-    if (!id) return false;
-    if (/^([a-fA-F0-9-]{10,})$/.test(id)) return false;  // UUIDs/hex
-    // Common "generated" IDs with underscore-delimited tokens, e.g. `u_0_9_QM`, `_r_8_`
-    // Matches any substring like `_<token>_<token>_` where token is [A-Za-z0-9]+
-    if (/_[a-zA-Z0-9]+_[a-zA-Z0-9]+_/.test(id)) return false;
-    if (/\d{5,}$/.test(id)) return false;                 // Large trailing numbers
-    if (/^(ember|react-|vue-)\d*/.test(id)) return false; // Framework IDs
-    if (/_\d{1,4}$/.test(id)) return false;               // Dynamic suffixes
-    return true;
+  if (!id) return false;
+  if (/^([a-fA-F0-9-]{10,})$/.test(id)) return false; // UUIDs/hex
+  // Common "generated" IDs with underscore-delimited tokens, e.g. `u_0_9_QM`, `_r_8_`
+  // Matches any substring like `_<token>_<token>_` where token is [A-Za-z0-9]+
+  if (/_[a-zA-Z0-9]+_[a-zA-Z0-9]+_/.test(id)) return false;
+  if (/\d{5,}$/.test(id)) return false; // Large trailing numbers
+  if (/^(ember|react-|vue-)\d*/.test(id)) return false; // Framework IDs
+  if (/_\d{1,4}$/.test(id)) return false; // Dynamic suffixes
+  return true;
 }
 
 function isStableClass(className: string): boolean {
-    if (className.includes(':') || className.includes('[')) return false;  // Utility classes
-    if (/^(css|sc)-[a-zA-Z0-9]+$/.test(className)) return false;           // CSS-in-JS
-    if (/^[a-zA-Z0-9]{10,}$/.test(className)) return false;                // Minified
-    if (/\d/.test(className)) return false;                                // Disqualifies multiple hashing strategies used for classes
-    return true;
+  if (className.includes(":") || className.includes("[")) return false; // Utility classes
+  if (/^(css|sc)-[a-zA-Z0-9]+$/.test(className)) return false; // CSS-in-JS
+  if (/^[a-zA-Z0-9]{10,}$/.test(className)) return false; // Minified
+  if (/\d/.test(className)) return false; // Disqualifies multiple hashing strategies used for classes
+  return true;
 }
 
 function hasStableText(element: Element): boolean {
-    const text = element.textContent?.trim();
-    if (!text) return false;
-    if (text.length > MAX_STABLE_TEXT_LENGTH || text.length < MIN_STABLE_TEXT_LENGTH) return false;
-    if (/^([A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+ [A-Z][a-z]+ [A-Z][a-z]+)$/.test(text)) return false; // First name, last name
-    if (/^[a-z]+$/.test(text)) return false; // Username (ish)
-    if (!/^[a-zA-Z ]+$/.test(text)) return false; // only allow letters and spaces, disqualifies most dynamic content
-    return true;
+  const text = element.textContent?.trim();
+  if (!text) return false;
+  if (
+    text.length > MAX_STABLE_TEXT_LENGTH ||
+    text.length < MIN_STABLE_TEXT_LENGTH
+  )
+    return false;
+  if (
+    /^([A-Z][a-z]+ [A-Z][a-z]+|[A-Z][a-z]+ [A-Z][a-z]+ [A-Z][a-z]+)$/.test(text)
+  )
+    return false; // First name, last name
+  if (/^[a-z]+$/.test(text)) return false; // Username (ish)
+  if (!/^[a-zA-Z ]+$/.test(text)) return false; // only allow letters and spaces, disqualifies most dynamic content
+  return true;
 }
 
-function getUniqueStableAttribute(element: Element): { name: string; value: string } | null {
-    for (const attr of STABLE_ATTRIBUTES) {
-        const val = element.getAttribute(attr);
-        if (!val || !isStableId(val)) continue;
+function getUniqueStableAttribute(
+  element: Element,
+): { name: string; value: string } | null {
+  for (const attr of STABLE_ATTRIBUTES) {
+    const val = element.getAttribute(attr);
+    if (!val || !isStableId(val)) continue;
 
-        const xpath = `//${getNodeTest(element)}[@${attr}='${val}']`;
-        if (isUnique(xpath, element.ownerDocument)) {
-            return { name: attr, value: val };
-        }
+    const xpath = `//${getNodeTest(element)}[@${attr}='${val}']`;
+    if (isUnique(xpath, element.ownerDocument)) {
+      return { name: attr, value: val };
     }
-    return null;
+  }
+  return null;
 }
 
 // Uniqueness Checks
 function isUnique(xpath: string, doc: Document): boolean {
-    try {
-        const result = doc.evaluate(xpath, doc, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-        return result.snapshotLength === 1;
-    } catch {
-        return false;
-    }
+  try {
+    const result = doc.evaluate(
+      xpath,
+      doc,
+      null,
+      XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+      null,
+    );
+    return result.snapshotLength === 1;
+  } catch {
+    return false;
+  }
 }
 
 function isUniqueId(id: string, doc: Document): boolean {
-    return doc.querySelectorAll(`[id='${CSS.escape(id)}']`).length === 1;
+  return doc.querySelectorAll(`[id='${CSS.escape(id)}']`).length === 1;
 }
 
 // DOM Utilities
 function getElementIndex(element: Element): number {
-    let index = 1;
-    let sibling = element.previousElementSibling;
-    while (sibling) {
-        if (sibling.tagName === element.tagName) index++;
-        sibling = sibling.previousElementSibling;
-    }
-    return index;
+  let index = 1;
+  let sibling = element.previousElementSibling;
+  while (sibling) {
+    if (sibling.tagName === element.tagName) index++;
+    sibling = sibling.previousElementSibling;
+  }
+  return index;
 }
 
 function getAbsolutePath(element: Element): string {
-    const segments: string[] = [];
-    let current: Element | null = element;
+  const segments: string[] = [];
+  let current: Element | null = element;
 
-    while (current?.nodeType === Node.ELEMENT_NODE) {
-        segments.unshift(`${getNodeTest(current)}[${getElementIndex(current)}]`);
-        current = current.parentElement;
-    }
+  while (current?.nodeType === Node.ELEMENT_NODE) {
+    segments.unshift(`${getNodeTest(current)}[${getElementIndex(current)}]`);
+    current = current.parentElement;
+  }
 
-    return '/' + segments.join('/');
+  return "/" + segments.join("/");
 }
 
 function getNodeTest(element: Element): string {
-    const tag = element.tagName.toLowerCase();
-    const isSvg = element.namespaceURI === 'http://www.w3.org/2000/svg' || element instanceof SVGElement;
-    return isSvg ? `*[local-name()='${tag}']` : tag;
+  const tag = element.tagName.toLowerCase();
+  const isSvg =
+    element.namespaceURI === "http://www.w3.org/2000/svg" ||
+    element instanceof SVGElement;
+  return isSvg ? `*[local-name()='${tag}']` : tag;
 }
 
 // XPath Utilities
 function countXPathSteps(xpath: string): number {
-    return xpath.split('/').filter(Boolean).length;
+  return xpath.split("/").filter(Boolean).length;
 }
 
 function escapeXPathString(str: string): string {
-    if (!str.includes("'")) return str;
-    const parts = str.split("'").map(part => `'${part}'`);
-    return `concat(${parts.join(`, "'", `)})`;
+  if (!str.includes("'")) return str;
+  const parts = str.split("'").map((part) => `'${part}'`);
+  return `concat(${parts.join(`, "'", `)})`;
 }

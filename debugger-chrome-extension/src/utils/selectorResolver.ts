@@ -10,8 +10,10 @@
  *
  * Each shadow path is walked within an open `shadowRoot` using deterministic tag+index segments.
  */
-export function resolveElementFromStoredSelector(selector: string): HTMLElement | null {
-  const parts = selector.split('|');
+export function resolveElementFromStoredSelector(
+  selector: string,
+): HTMLElement | null {
+  const parts = selector.split("|");
   if (parts.length === 0) return null;
 
   const baseXPath = parts[0].trim();
@@ -24,7 +26,7 @@ export function resolveElementFromStoredSelector(selector: string): HTMLElement 
 
   for (let i = 1; i < parts.length; i++) {
     const shadowPath = parts[i].trim();
-    if (!shadowPath.startsWith('/')) return null;
+    if (!shadowPath.startsWith("/")) return null;
 
     const root = (current as HTMLElement).shadowRoot;
     if (!root) return null; // closed shadow root or not a host
@@ -44,16 +46,18 @@ function evaluateFirstXPath(xpath: string): Element | null {
       document,
       null,
       XPathResult.FIRST_ORDERED_NODE_TYPE,
-      null
+      null,
     );
-    return result.singleNodeValue instanceof Element ? result.singleNodeValue : null;
+    return result.singleNodeValue instanceof Element
+      ? result.singleNodeValue
+      : null;
   } catch {
     return null;
   }
 }
 
 function resolveInShadowRoot(root: ShadowRoot, path: string): Element | null {
-  const segments = path.split('/').filter(Boolean);
+  const segments = path.split("/").filter(Boolean);
   let parent: ShadowRoot | Element = root;
   let current: Element | null = null;
 
@@ -62,10 +66,13 @@ function resolveInShadowRoot(root: ShadowRoot, path: string): Element | null {
     if (!parsed) return null;
 
     const { tag, index } = parsed;
-    const children: Element[] = parent instanceof ShadowRoot ? Array.from(parent.children) : Array.from(parent.children);
+    const children: Element[] =
+      parent instanceof ShadowRoot
+        ? Array.from(parent.children)
+        : Array.from(parent.children);
 
     const matches =
-      tag === '*'
+      tag === "*"
         ? children
         : children.filter((c) => c.localName.toLowerCase() === tag);
 
